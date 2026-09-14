@@ -1,0 +1,31 @@
+{
+  "fixture": "LBK Saturday preorder readiness",
+  "synthetic": true,
+  "preorders": [
+    {"sku":"chicken-thighs","name":"Chicken thighs","required":30,"unit":"lb"},
+    {"sku":"plantains","name":"Plantains","required":48,"unit":"each"},
+    {"sku":"containers","name":"Meal containers","required":60,"unit":"each"}
+  ],
+  "inventory": [
+    {"sku":"chicken-thighs","available":18},
+    {"sku":"plantains","available":24},
+    {"sku":"containers","available":40}
+  ],
+  "catalog": [
+    {"sku":"chicken-thighs","unit_price":3.25},
+    {"sku":"plantains","unit_price":0.75},
+    {"sku":"containers","unit_price":0.45}
+  ],
+  "receipts": [
+    {
+      "evidence_ref":"synthetic:receipt:lbk-sat-001",
+      "synthetic":true,
+      "completed_at":"2026-09-12T13:30:00-07:00",
+      "items":[
+        {"sku":"chicken-thighs","quantity":12},
+        {"sku":"plantains","quantity":24},
+        {"sku":"containers","quantity":20}
+      ]
+    }
+  ]
+}

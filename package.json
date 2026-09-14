@@ -1,0 +1,14 @@
+{
+  "name": "aizoya-operator-alexa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/server.js",
+    "preflight": "node scripts/preflight.mjs",
+    "verify": "npm run preflight && npm test",
+    "test": "node --test",
+    "test:judge": "node --test test/*.test.js"
+  }
+}
