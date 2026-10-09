@@ -55,8 +55,8 @@ Exactly eight business-capability tools are exposed:
 ## Run locally
 
 ```bash
-git clone https://github.com/aizoya/aizoya-operator-alexa.git
-cd aizoya-operator-alexa
+git clone https://github.com/aizoya/aizoya-operator.git
+cd aizoya-operator
 
 node --version
 npm run verify
