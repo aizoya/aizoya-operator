@@ -54,11 +54,17 @@ export function buildServer({converse=null,maxModelCalls=6}={}){
     finally{assistantBusy=false;}
   }
   if(body.method==='initialize'){
-    const init=mcp.initialize(body); return json(res,200,init.body,{'mcp-protocol-version':PROTOCOL_VERSION,'mcp-session-id':init.sessionId});
+    const init=mcp.initialize(body);
+    if(init.body.error)return json(res,400,init.body);
+    return json(res,200,init.body,{'mcp-protocol-version':PROTOCOL_VERSION,'mcp-session-id':init.sessionId});
   }
   const protocol=req.headers['mcp-protocol-version']; if(protocol!==PROTOCOL_VERSION) return json(res,400,{error:'UNSUPPORTED_PROTOCOL_VERSION'});
   const session=req.headers['mcp-session-id']; if(!session||!mcp.hasSession(String(session))) return json(res,404,{error:'MCP_SESSION_NOT_FOUND'});
-  if(body.method==='notifications/initialized'){ res.writeHead(202); return res.end(); }
+  if(body.method==='notifications/initialized'){
+    const notification=await mcp.handle(body,null);
+    if(notification)return json(res,400,notification);
+    res.writeHead(202);return res.end();
+  }
   const ctx=contextFrom(req); if(!ctx) return json(res,401,{error:'AUTH_CONTEXT_REQUIRED'});
   const response=await mcp.handle(body,ctx); if(response===null){res.writeHead(202);return res.end();}
   return json(res,200,response,{'mcp-protocol-version':PROTOCOL_VERSION,'mcp-session-id':String(session)});

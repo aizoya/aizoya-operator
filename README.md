@@ -37,7 +37,7 @@ To run the optional SDK path in your own authorized AWS development environment,
 ## Implementation and verification
 Node.js ES modules, built-in HTTP, MCP 2025-11-25 Streamable HTTP, exactly eight business-capability tools, single-process JSON persistence, SHA-256 integrity hashes and built-in node:test. Core guided mode has no runtime package dependencies. The Bedrock SDK is optional.
 
-Fresh local verification: **preflight PASS; 32/32 tests PASS**, including ten consecutive isolated synthetic hero workflows. Coverage includes approval refusal/staleness, changed execution chains, missing evidence, idempotency, tenant partitions, session/origin checks, bounded reader calls and mocked-DOM UI behavior. These are not 32 live AWS scenarios or a production security certification.
+Fresh local verification: **preflight PASS; 38/38 tests PASS**, including ten consecutive isolated synthetic hero workflows. Coverage includes approval refusal/staleness, changed execution chains, missing evidence, idempotency, tenant partitions, session/origin checks, bounded reader calls and mocked-DOM UI behavior. These are not 38 live AWS scenarios or a production security certification.
 
 - [Architecture and tool boundaries](docs/ARCHITECTURE.md)
 - [Eight MCP tools](docs/MCP_TOOLS.md)

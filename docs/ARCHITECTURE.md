@@ -16,3 +16,6 @@ Exact plan ID and monotonic revision bind human approval. Plan/inventory changes
 Trusted headers are not production auth. Tenant partitions demonstrate application isolation but do not authenticate a remote caller. JSON atomic replacement supports a local single-process demo, not multi-writer transactions. SHA-256 records are not signed attestations. Keep synthetic state out of source.
 
 The UI's approval continuation automatically performs synthetic handoff and fixture reconciliation. It has no separate live evidence-upload feature. No real supplier execution occurs.
+
+## Input and receipt validation
+The MCP boundary validates JSON-RPC envelopes and the eight flat tool schemas before execution. Invalid initialize/initialized-notification envelopes return HTTP400 with a protocol error. Receipt lookup rechecks hash, receipt identity, tenant identity, synthetic flag and verified status. A corrupted stored receipt cannot be returned to the reader as verified. Hashes do not defend against an operating-system user rewriting both data and hashes.

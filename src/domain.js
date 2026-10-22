@@ -30,6 +30,13 @@ function workflow(t, workflowId) {
   return w;
 }
 
+function isIntactReceipt(receipt, tenantId, receiptId) {
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) return false;
+  if (receipt.receipt_id !== receiptId || receipt.tenant_id !== tenantId || receipt.synthetic !== true || receipt.status !== 'VERIFIED') return false;
+  const body = Object.fromEntries(Object.entries(receipt).filter(([key]) => key !== 'receipt_hash'));
+  return receipt.receipt_hash === sha256(JSON.stringify(body));
+}
+
 export function createOperations({ store, fixturePath }) {
   const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
   return {
@@ -44,8 +51,7 @@ export function createOperations({ store, fixturePath }) {
       if (latest.approval && !latest.handoff) risks.push('APPROVED_WORK_NOT_HANDED_OFF');
       const receipt=t.receipts[latest.verified_action_receipt_id];
       const inputState=latest.purchase_plan&&latest.approval&&latest.handoff ? {workflow_id:latest.workflow_id,plan_id:latest.purchase_plan.plan_id,plan_version:latest.purchase_plan.version,approval_id:latest.approval.approval_id,handoff_id:latest.handoff.handoff_id} : null;
-      const receiptBody=receipt ? Object.fromEntries(Object.entries(receipt).filter(([key])=>key!=='receipt_hash')) : null;
-      const currentCloseout=Boolean(receipt&&inputState&&latest.status==='CLOSED'&&receipt.status==='VERIFIED'&&receipt.synthetic===true&&receipt.tenant_id===ctx.tenantId&&receipt.workflow_id===latest.workflow_id&&receipt.input_state_hash===sha256(JSON.stringify(inputState))&&receipt.receipt_hash===sha256(JSON.stringify(receiptBody)));
+      const currentCloseout=Boolean(isIntactReceipt(receipt,ctx.tenantId,latest.verified_action_receipt_id)&&inputState&&latest.status==='CLOSED'&&receipt.workflow_id===latest.workflow_id&&receipt.input_state_hash===sha256(JSON.stringify(inputState)));
       if (latest.handoff && !currentCloseout) risks.push('AWAITING_CLOSEOUT_EVIDENCE');
       if (!currentCloseout && !risks.length) risks.push('CLOSEOUT_NOT_VERIFIED');
       return { readiness: risks.length ? 'AT_RISK' : 'READY', synthetic: true, workflow_id: latest.workflow_id, status: latest.status, pending_plan: latest.status==='AWAITING_APPROVAL' ? structuredClone(latest.purchase_plan) : null, summary: risks.length ? `Saturday readiness has ${risks.length} unresolved risk(s).` : 'Saturday preorder workflow is verified closed.', risks, next_actions: risks };
@@ -151,7 +157,7 @@ export function createOperations({ store, fixturePath }) {
       });
       store.writeTenant(ctx.tenantId,t); return result;
     },
-    getActionReceipt(ctx,args){ const t=tenant(store,ctx.tenantId); const r=t.receipts[args.receipt_id]; if(!r) throw fail('RECEIPT_NOT_FOUND'); return structuredClone(r); }
+    getActionReceipt(ctx,args){ const t=tenant(store,ctx.tenantId); const r=t.receipts[args.receipt_id]; if(!r) throw fail('RECEIPT_NOT_FOUND'); if(!isIntactReceipt(r,ctx.tenantId,args.receipt_id))throw fail('RECEIPT_INTEGRITY_FAILED'); return structuredClone(r); }
   };
 }
 
