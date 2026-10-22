@@ -1,97 +1,20 @@
-# Judge Demo Runbook — Local Synthetic MVP
+# Local synthetic demo runbook
+Run npm run verify, then npm start. Open http://127.0.0.1:8787/ locally. No package installation, AWS account or inference charge is needed for guided mode. Do not expose the service publicly.
 
-This runbook demonstrates AIZOYA Operator for Alexa+ locally using synthetic data only. It does not require deployment, cloud spend, production data, or live external integrations.
+1. Confirm the synthetic Alexa+ simulation label.
+2. Click Prepare guided demo plan. Inspect three shortages and the $66 plan.
+3. Click Not now. Confirm no handoff.
+4. Prepare a plan again; inspect items. The human operator—not the model—clicks Approve this demo plan.
+5. This triggers synthetic handoff, a later MCP session/risk brief and automatic fixture evidence reconciliation. Inspect the final synthetic receipt.
+6. Expand technical details. No actual purchase or independently uploaded customer receipt is involved.
+7. New demo session resets the conversation, not the persisted records. Refresh risk brief restores a pending approval plan after a page reload.
 
-## Preconditions
-
-- Node.js 22 or newer.
-- No `.env`, credentials, production data, customer information, or live supplier/payment integrations are required.
-- `.data/` contains synthetic local runtime state only and is gitignored.
-
-## Clean verification
-
-Run:
-
+For an isolated local run, choose a new synthetic-state filename outside source:
 ```bash
-npm run verify
+AIZOYA_STATE_PATH=/tmp/aizoya-operator-demo-unique-state.json npm start
 ```
+Choose a genuinely unused path; the server preserves an existing state file. Do not delete another user's state. Stop the process before restarting. The default store is .data/state.json.
 
-Required result:
+The optional Ask AIZOYA path returns a clear disconnected response under npm start. Follow BEDROCK_READER.md only in an authorized paid development environment. No native Alexa entitlement is provided.
 
-- preflight exits 0;
-- exact eight-tool MCP inventory is confirmed;
-- all automated tests pass;
-- the 10-consecutive-run reliability test passes.
-
-If any check fails, stop and fix the specific failing invariant before using the demo.
-
-## Start the local simulation
-
-```bash
-npm start
-```
-
-Default bind target: `127.0.0.1:8787`.
-
-Open:
-
-```text
-http://127.0.0.1:8787/
-```
-
-The interface is intentionally labeled as a synthetic Alexa+ simulation.
-
-## Three-minute demo path
-
-1. Click **Run to approval gate**.
-2. Show the synthetic inventory gaps.
-3. Show the versioned purchase plan and estimated total.
-4. Pause on the visible **Human approval required** card and note that no purchase has been made and no handoff can occur yet.
-5. Select **Not now** to demonstrate that no handoff occurs.
-6. Run to the approval gate again.
-7. As the human operator, click **Approve current plan**.
-8. Show the governed staff handoff.
-9. Show the later-session brief with preserved operational state and unresolved risk.
-10. Show deterministic synthetic receipt reconciliation and the final Verified Action Receipt.
-
-## Mandatory scope disclosures
-
-- This is a synthetic local Alexa+ simulation.
-- No real purchase is executed.
-- No Toast, supplier, SMS, payment, or production write is live.
-- AWS/Bedrock integration is architecture-only in the current verified MVP.
-- The human approval interaction is real within the simulation and is not generated automatically by the agent.
-
-## Expected safe failures
-
-### Approval declined or negated
-
-The workflow remains unapproved and no handoff occurs. Phrases such as `I do not approve` must not satisfy the approval gate.
-
-### Stale approval
-
-Handoff is rejected until the current plan version is explicitly approved.
-
-### Missing evidence
-
-Verified Action Receipt issuance is refused until required evidence reconciles.
-
-### Tenant mismatch
-
-No cross-tenant workflow or receipt information is returned.
-
-### Local server restart
-
-Restart with `npm start`. Synthetic state persists in `.data/state.json` unless a fresh `AIZOYA_STATE_PATH` is deliberately used.
-
-## What not to claim
-
-Do not describe any of these as implemented or live in this MVP:
-
-- production Alexa+ deployment;
-- live Bedrock orchestration;
-- production AWS infrastructure;
-- real purchasing or supplier outreach;
-- Toast or SMS production integration;
-- production authentication or production database persistence; or
-- autonomous spending.
+Automated negative cases (refusal, stale plan/reapproval, mismatched or missing evidence, stale closeout, duplicate keys and cross-tenant partitions) are in test/. Automated mocked-DOM UI tests are not real-browser or iPhone QA. Current release visual QA/revised recording remain open; the existing Vimeo video shows an earlier baseline.

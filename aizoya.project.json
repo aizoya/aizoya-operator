@@ -1,0 +1,17 @@
+{
+  "schema_version": "aizoya-public-source-snapshot-v1",
+  "product": "aizoya-operator-alexa",
+  "display_name": "AIZOYA Operator for Alexa+",
+  "repository": {
+    "visibility": "public",
+    "working_branch": "main"
+  },
+  "source_snapshot": true,
+  "controls": {
+    "synthetic_data_only": true,
+    "deployment_enabled": false,
+    "production_enabled": false,
+    "automatic_publication_enabled": false
+  },
+  "upstream_executable_revision": "39c1894c8b43f55f23e5d9179608b34798083054"
+}

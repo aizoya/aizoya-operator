@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { TOOL_DEFINITIONS } from '../src/tools.js';
@@ -10,12 +11,12 @@ const fail = (message) => {
 const pass = (message) => console.log(`PRECHECK PASS: ${message}`);
 
 const requiredFiles = [
+  'AGENTS.md',
   'README.md',
-  'LICENSE',
+  'aizoya.project.json',
   'docs/ARCHITECTURE.md',
-  'docs/AWS_BEDROCK_PLAN.md',
   'docs/MCP_TOOLS.md',
-  'docs/PRODUCT_CHARTER.md',
+  'docs/READINESS.md',
   'docs/VERIFIED_ACTION_RECEIPT.md',
   'fixtures/lbk-saturday.json',
   'src/server.js',
@@ -24,10 +25,7 @@ const requiredFiles = [
   'test/mcp.test.js',
   'test/server.test.js',
   'test/workflow.test.js',
-  'test/reliability.test.js',
-  'web/index.html',
-  'web/app.js',
-  'web/styles.css'
+  'test/reliability.test.js'
 ];
 
 const major = Number(process.versions.node.split('.')[0]);
@@ -40,6 +38,30 @@ for (const path of requiredFiles) {
     pass(`required file ${path}`);
   } catch {
     fail(`missing/unreadable required file ${path}`);
+  }
+}
+
+let project;
+try {
+  project = JSON.parse(await readFile('aizoya.project.json', 'utf8'));
+} catch (error) {
+  fail(`aizoya.project.json parse failed: ${error.message}`);
+}
+
+if (project) {
+  const controls = project.controls ?? {};
+  if (project.repository?.visibility !== 'public' || project.source_snapshot !== true) fail('expected public source snapshot declaration');
+  else pass('public synthetic source snapshot');
+  if (project.repository?.working_branch !== 'main') fail('unexpected release branch declaration');
+  else pass('source-release branch declaration main');
+  for (const [key, expected] of [
+    ['synthetic_data_only', true],
+    ['deployment_enabled', false],
+    ['automatic_publication_enabled', false],
+    ['production_enabled', false]
+  ]) {
+    if (controls[key] !== expected) fail(`control ${key} must be ${expected}`);
+    else pass(`control ${key}=${expected}`);
   }
 }
 
@@ -61,5 +83,5 @@ if (JSON.stringify(actualTools) !== JSON.stringify(expectedTools)) {
 }
 
 if (!process.exitCode) {
-  console.log('PRECHECK COMPLETE: public release package is locally ready for npm test and judge demo startup.');
+  console.log('PRECHECK COMPLETE: source prerequisites checked; run tests before local demo startup. Not production readiness.');
 }

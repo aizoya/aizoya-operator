@@ -6,12 +6,9 @@ const id = (prefix) => `${prefix}_${crypto.randomUUID()}`;
 const sha256 = (value) => crypto.createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
 const fail = (code, message = code) => Object.assign(new Error(message), { code });
 const isExplicitApproval = (phrase) => {
-  const text = String(phrase ?? '').trim().toLowerCase();
-  if (!/\bapprove(d)?\b/.test(text)) return false;
-  if (/\b(?:not|never)\s+approve(?:d)?\b/.test(text)) return false;
-  if (/\b(?:do|does|did)\s+not\s+approve(?:d)?\b/.test(text)) return false;
-  if (/\b(?:don't|doesn't|didn't)\s+approve(?:d)?\b/.test(text)) return false;
-  return true;
+  if (typeof phrase !== 'string') return false;
+  const text = phrase.trim().toLowerCase();
+  return new Set(['approve','i approve','i approve this plan','i approve this current plan','i approve this current demo plan']).has(text);
 };
 
 function tenant(store, tenantId) { return store.readTenant(tenantId); }
@@ -42,10 +39,16 @@ export function createOperations({ store, fixturePath }) {
       if (!latest) return { readiness: 'AT_RISK', synthetic: true, summary: 'No Saturday readiness commitment exists yet.', risks: ['NO_COMMITMENT'], next_actions: ['capture_commitment'] };
       const risks = [];
       if (!latest.inventory_reconciliation) risks.push('INVENTORY_NOT_RECONCILED');
+      if (latest.inventory_reconciliation && !latest.purchase_plan) risks.push('PURCHASE_PLAN_REQUIRED');
       if (latest.purchase_plan && !latest.approval) risks.push('PLAN_AWAITING_APPROVAL');
       if (latest.approval && !latest.handoff) risks.push('APPROVED_WORK_NOT_HANDED_OFF');
-      if (latest.handoff && !latest.verified_action_receipt_id) risks.push('AWAITING_CLOSEOUT_EVIDENCE');
-      return { readiness: risks.length ? 'AT_RISK' : 'READY', synthetic: true, workflow_id: latest.workflow_id, status: latest.status, summary: risks.length ? `Saturday readiness has ${risks.length} unresolved risk(s).` : 'Saturday preorder workflow is verified closed.', risks, next_actions: risks };
+      const receipt=t.receipts[latest.verified_action_receipt_id];
+      const inputState=latest.purchase_plan&&latest.approval&&latest.handoff ? {workflow_id:latest.workflow_id,plan_id:latest.purchase_plan.plan_id,plan_version:latest.purchase_plan.version,approval_id:latest.approval.approval_id,handoff_id:latest.handoff.handoff_id} : null;
+      const receiptBody=receipt ? Object.fromEntries(Object.entries(receipt).filter(([key])=>key!=='receipt_hash')) : null;
+      const currentCloseout=Boolean(receipt&&inputState&&latest.status==='CLOSED'&&receipt.status==='VERIFIED'&&receipt.synthetic===true&&receipt.tenant_id===ctx.tenantId&&receipt.workflow_id===latest.workflow_id&&receipt.input_state_hash===sha256(JSON.stringify(inputState))&&receipt.receipt_hash===sha256(JSON.stringify(receiptBody)));
+      if (latest.handoff && !currentCloseout) risks.push('AWAITING_CLOSEOUT_EVIDENCE');
+      if (!currentCloseout && !risks.length) risks.push('CLOSEOUT_NOT_VERIFIED');
+      return { readiness: risks.length ? 'AT_RISK' : 'READY', synthetic: true, workflow_id: latest.workflow_id, status: latest.status, pending_plan: latest.status==='AWAITING_APPROVAL' ? structuredClone(latest.purchase_plan) : null, summary: risks.length ? `Saturday readiness has ${risks.length} unresolved risk(s).` : 'Saturday preorder workflow is verified closed.', risks, next_actions: risks };
     },
     captureCommitment(ctx, args) {
       const t = tenant(store, ctx.tenantId);
@@ -64,6 +67,10 @@ export function createOperations({ store, fixturePath }) {
         const onHand = new Map(fixture.inventory.map(x => [x.sku, x]));
         const gaps = fixture.preorders.map(r => ({ sku: r.sku, name: r.name, required: r.required, available: onHand.get(r.sku)?.available ?? 0, shortage: Math.max(0, r.required - (onHand.get(r.sku)?.available ?? 0)), unit: r.unit })).filter(x => x.shortage > 0);
         w.inventory_reconciliation = { reconciliation_id: id('inv'), synthetic: true, gaps, recorded_at: iso(), source: 'fixture:lbk-saturday.json' };
+        // A new inventory observation invalidates downstream authority and current closeout.
+        // Historical receipts and audit events remain intact.
+        w.plan_revision=Math.max(w.plan_revision??0,w.purchase_plan?.version??0);
+        w.purchase_plan=null;w.approval=null;w.handoff=null;w.verified_action_receipt_id=null;
         w.status = gaps.length ? 'GAPS_IDENTIFIED' : 'INVENTORY_READY'; w.updated_at = iso(); w.version++;
         audit(t, ctx.actorId, 'inventory.reconciled', { workflow_id: w.workflow_id, gap_count: gaps.length });
         return { reconciliation_id: w.inventory_reconciliation.reconciliation_id, gaps, risk_level: gaps.length ? 'HIGH' : 'LOW', synthetic: true };
@@ -76,9 +83,10 @@ export function createOperations({ store, fixturePath }) {
       const result = idem(t, args.idempotency_key, args, () => {
         const prices = new Map(fixture.catalog.map(x => [x.sku, x]));
         const items = w.inventory_reconciliation.gaps.map(g => { const p = prices.get(g.sku); return { sku:g.sku, name:g.name, quantity:g.shortage, unit:g.unit, unit_price:p.unit_price, line_total:Number((g.shortage*p.unit_price).toFixed(2)) }; });
-        const version = (w.purchase_plan?.version ?? 0) + 1;
+        const version = Math.max(w.plan_revision??0,w.purchase_plan?.version??0) + 1;
+        w.plan_revision=version;
         w.purchase_plan = { plan_id: id('plan'), version, synthetic: true, items, estimated_total:Number(items.reduce((s,x)=>s+x.line_total,0).toFixed(2)), currency:'USD', status:'AWAITING_APPROVAL', created_at:iso() };
-        w.approval = null; w.handoff = null; w.status='AWAITING_APPROVAL'; w.updated_at=iso(); w.version++;
+        w.approval = null; w.handoff = null; w.verified_action_receipt_id=null; w.status='AWAITING_APPROVAL'; w.updated_at=iso(); w.version++;
         audit(t, ctx.actorId, 'purchase_plan.built', { workflow_id:w.workflow_id, plan_id:w.purchase_plan.plan_id, plan_version:version });
         return { ...w.purchase_plan, approval_required:true };
       });
@@ -88,10 +96,11 @@ export function createOperations({ store, fixturePath }) {
       if (!['OWNER','MANAGER'].includes(ctx.role)) throw fail('APPROVER_UNAUTHORIZED');
       const t = tenant(store, ctx.tenantId); const w = workflow(t, args.workflow_id); const p = w.purchase_plan;
       if (!p) throw fail('PURCHASE_PLAN_REQUIRED');
-      if (p.version !== args.plan_version) throw fail('APPROVAL_STALE');
+      if (p.plan_id !== args.plan_id || p.version !== args.plan_version) throw fail('APPROVAL_STALE');
       if (!isExplicitApproval(args.approval_phrase)) throw fail('EXPLICIT_APPROVAL_REQUIRED');
       const result = idem(t, args.idempotency_key, args, () => {
         w.approval = { approval_id:id('ap'), plan_id:p.plan_id, plan_version:p.version, authorized_by:ctx.actorId, authorized_at:iso(), phrase_hash:sha256(args.approval_phrase), synthetic:true };
+        w.handoff=null;w.verified_action_receipt_id=null;
         w.status='APPROVED'; w.updated_at=iso(); w.version++;
         audit(t, ctx.actorId, 'action.approved', { workflow_id:w.workflow_id, plan_id:p.plan_id, plan_version:p.version });
         return { approval_id:w.approval.approval_id, status:'APPROVED', plan_id:p.plan_id, plan_version:p.version, authorized_by:ctx.actorId, authorized_at:w.approval.authorized_at, synthetic:true };
@@ -113,9 +122,16 @@ export function createOperations({ store, fixturePath }) {
     verifyCloseout(ctx, args) {
       const t = tenant(store, ctx.tenantId); const w=workflow(t,args.workflow_id);
       if (!w.handoff || !w.approval || !w.purchase_plan) throw fail('EXECUTION_CHAIN_INCOMPLETE');
+      if(w.approval.plan_id!==w.purchase_plan.plan_id||w.approval.plan_version!==w.purchase_plan.version||w.handoff.plan_id!==w.purchase_plan.plan_id||w.handoff.plan_version!==w.purchase_plan.version||w.handoff.approval_id!==w.approval.approval_id)throw fail('EXECUTION_CHAIN_STALE');
       const evidence = fixture.receipts.find(r => r.evidence_ref === args.evidence_ref);
       if (!evidence) throw fail('EVIDENCE_NOT_FOUND');
       if (!evidence.synthetic) throw fail('NON_SYNTHETIC_EVIDENCE_PROHIBITED');
+      const priorCloseout=t.idempotency[args.idempotency_key]?.result?.action_receipt_id;
+      if(priorCloseout){
+        const priorReceipt=t.receipts[priorCloseout];
+        const currentInput={workflow_id:w.workflow_id,plan_id:w.purchase_plan.plan_id,plan_version:w.purchase_plan.version,approval_id:w.approval.approval_id,handoff_id:w.handoff.handoff_id};
+        if(!priorReceipt||priorReceipt.input_state_hash!==sha256(JSON.stringify(currentInput)))throw fail('CLOSEOUT_REPLAY_STALE');
+      }
       const result = idem(t,args.idempotency_key,args,()=>{
         const expected = new Map(w.purchase_plan.items.map(x=>[x.sku,x.quantity]));
         const actual = new Map(evidence.items.map(x=>[x.sku,x.quantity]));
@@ -138,3 +154,5 @@ export function createOperations({ store, fixturePath }) {
     getActionReceipt(ctx,args){ const t=tenant(store,ctx.tenantId); const r=t.receipts[args.receipt_id]; if(!r) throw fail('RECEIPT_NOT_FOUND'); return structuredClone(r); }
   };
 }
+
+

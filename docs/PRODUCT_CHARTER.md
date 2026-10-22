@@ -31,3 +31,6 @@ AIZOYA Operator remembers the outcome, asks before it spends, and proves the job
 - Synthetic fixtures only.
 - Safe simulation is acceptable when labeled.
 - No autonomous spending, contacting, publishing, or production mutation.
+
+## Demonstration scope
+The table above describes product acceptance goals. Current handoff/ownership and receipt evidence are synthetic. No real staff acknowledgment, external purchasing or spoken-input/native Alexa integration is demonstrated by this source release. See READINESS.md for the verified implementation boundary.

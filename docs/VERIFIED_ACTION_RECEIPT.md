@@ -35,3 +35,6 @@ A Verified Action Receipt (VAR) is evidence that an authorized operational outco
 7. Open exceptions remain attached to the closeout record.
 
 The implementation schema and signing strategy require Product and Security review before being treated as final.
+
+## Current release scope
+This is a design specification, not a promise of finalized schema or real-world proof. The local synthetic implementation verifies fixture evidence against current approval/handoff linkage and hashes. It does not sign receipts, provide immutable storage, prove supplier fulfillment or authenticate remote users. The runtime schema in src/domain.js is authoritative for this snapshot.

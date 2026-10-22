@@ -1,146 +1,53 @@
 # AIZOYA Operator for Alexa+
+It remembers the work, asks before consequential action, and shows the evidence.
 
-**Alexa+ provides the intelligence. AIZOYA adds the accountability layer.**
+A restaurant operator needs more than a plausible answer: what is missing for Saturday, which plan was approved, who owns the work, and what remains unverified? This project demonstrates that journey with synthetic La Bandera Kitchen data.
 
-AIZOYA Operator is a governed operations layer designed to carry real-world work safely from intent to evidence.
+**Local Alexa+ simulation, not native Alexa+ integration. No real purchase, message or payment.**
 
-> It remembers the work, asks before consequential action, and proves the job got done.
-
-## What this project demonstrates
-
-The current submission uses a **synthetic local Alexa+ simulation** for a La Bandera Kitchen Saturday preorder-readiness workflow:
-
-`inventory gap → purchase plan → human approval → staff handoff → later-session risk brief → receipt reconciliation → Verified Action Receipt`
-
-The demo shows that AIZOYA can:
-
-- identify synthetic inventory gaps;
-- build a versioned synthetic purchase plan;
-- stop at a visible human approval gate;
-- prove that **Not now** results in no handoff;
-- reject missing, negated, and stale approval;
-- hand approved work to a staff owner;
-- preserve structured operational state across later sessions;
-- reconcile synthetic receipt evidence; and
-- issue a Verified Action Receipt only after deterministic verification.
-
-In plain language: **AIZOYA remembers the work, not just the conversation.**
-
-## MCP tool surface
-
-Exactly eight business-capability tools are exposed:
-
-1. `get_shift_brief`
-2. `capture_commitment`
-3. `reconcile_inventory`
-4. `build_purchase_plan`
-5. `approve_action`
-6. `handoff_task`
-7. `verify_closeout`
-8. `get_action_receipt`
-
-## Technical foundation
-
-- Node.js 22+
-- ES modules
-- zero runtime dependencies for the MVP
-- MCP `2025-11-25` Streamable HTTP at `/mcp`
-- atomic JSON-file persistence for synthetic local state
-- tenant-partitioned state
-- idempotency protection
-- version-bound human approval
-- SHA-256 evidence and state hashes
-- built-in `node:test`
-
-## Run locally
+## Run the guided demo — no AWS account or paid calls required
+Requires Node.js 22+ and git. The verification reported below was run on Node v24.19.0.
 
 ```bash
-git clone https://github.com/aizoya/aizoya-operator-alexa.git
-cd aizoya-operator-alexa
-
-node --version
+git clone https://github.com/aizoya/aizoya-operator.git
+cd aizoya-operator
 npm run verify
 npm start
 ```
 
-Then open:
+Open http://127.0.0.1:8787/ on the same computer. Keep the server on loopback; this is not a remotely authenticated service. Do not expose it with a public tunnel.
 
-```text
-http://127.0.0.1:8787/
-```
+1. Click **Prepare guided demo plan**. Review three synthetic shortages and the $66 plan.
+2. Choose **Not now**: no handoff occurs.
+3. Prepare a plan again. As the human operator, click **Approve this demo plan**.
+4. The demo then performs a synthetic staff handoff, starts a new MCP session, reconstructs unresolved risk and automatically reconciles its synthetic fixture evidence. It displays the Verified Action Receipt.
+5. Expand **View evidence and technical details** to inspect the record.
 
-The MCP endpoint is available at:
+Approval is bound to the exact plan identity and monotonic revision. Model output cannot authorize it. **New demo session** resets the conversation, not persisted records. See [the runbook](docs/DEMO_RUNBOOK.md) for recovery and isolated-state runs.
 
-```text
-http://127.0.0.1:8787/mcp
-```
+## Optional Bedrock reader
+The browser includes **Ask AIZOYA**, backed by POST /assistant. With ordinary `npm start`, Bedrock is deliberately disconnected; the reader returns 503 and the guided demo remains available.
 
-### Suggested demo path
+The optional adapter uses Amazon Bedrock Runtime Converse with Nova Lite. It exposes only two reads—`get_shift_brief` and `get_action_receipt`—through the actual MCP handler, supplies tool results back to the model and builds the customer summary from verified tool data. It does not create plans conversationally, approve or execute writes.
 
-1. Click **Run to approval gate**.
-2. Review the synthetic inventory gaps and versioned purchase plan.
-3. Choose **Not now** to verify that no handoff occurs.
-4. Run to the approval gate again.
-5. Click **Approve current plan** as the human operator.
-6. Observe the governed staff handoff.
-7. Review the later-session risk brief and preserved operational state.
-8. Observe deterministic synthetic receipt reconciliation.
-9. Review the final Verified Action Receipt.
+An October 21 plugin-assisted test completed two actual Bedrock calls through the Node HTTP/MCP path. **Standalone AWS SDK authentication and a live SDK-to-browser journey have not been verified here.** [AWS evidence and reproduction boundaries](docs/AWS_INTEGRATION_EVIDENCE.md).
 
-## Verification
+To run the optional SDK path in your own authorized AWS development environment, see [Bedrock setup](docs/BEDROCK_READER.md). It incurs provider charges and needs separate AWS credentials; this public repository supplies none.
 
-The verified development build passed:
+## Implementation and verification
+Node.js ES modules, built-in HTTP, MCP 2025-11-25 Streamable HTTP, exactly eight business-capability tools, single-process JSON persistence, SHA-256 integrity hashes and built-in node:test. Core guided mode has no runtime package dependencies. The Bedrock SDK is optional.
 
-- **13/13 automated tests**
-- **10/10 consecutive isolated hero workflows**
+Fresh local verification: **preflight PASS; 32/32 tests PASS**, including ten consecutive isolated synthetic hero workflows. Coverage includes approval refusal/staleness, changed execution chains, missing evidence, idempotency, tenant partitions, session/origin checks, bounded reader calls and mocked-DOM UI behavior. These are not 32 live AWS scenarios or a production security certification.
 
-The suite covers the local judge UI origin, invalid-origin rejection, protocol/session requirements, approval gating, negated approval, stale approval, idempotency conflicts, tenant isolation, cross-session continuity, complete synthetic workflow persistence, and Verified Action Receipt generation.
+- [Architecture and tool boundaries](docs/ARCHITECTURE.md)
+- [Eight MCP tools](docs/MCP_TOOLS.md)
+- [Current readiness and limitations](docs/READINESS.md)
+- [Developer friction log](docs/FRICTION_LOG.md)
+- [Source manifest](SOURCE_MANIFEST.sha256)
 
-Run the same verification locally with:
+## Important limits
+Demo headers are trusted local identity, not production authentication. JSON storage is not multi-process transaction-safe. Receipt hashes detect covered changes; they are not cryptographic signatures or proof of a real purchase. Fixtures use historical dates. The current baseline video at https://vimeo.com/1226788601 predates the optional reader and later hardening; it is not evidence of those newer features. Current release browser/iPhone visual QA and revised recording remain outstanding.
 
-```bash
-npm run verify
-```
+No DynamoDB, Cognito, AgentCore, Strands, OpenSearch, production database, supplier, Toast or SMS integration is claimed. No hosting/deployment is included.
 
-## Safety model
-
-- Model output is never treated as authorization.
-- Consequential handoff requires explicit approval of the exact current plan version.
-- Rebuilding/changing the plan invalidates prior approval.
-- `Not now` leaves the plan unapproved and performs no handoff.
-- Tenant state is partitioned and negative cross-tenant access is tested.
-- Receipt issuance requires deterministic evidence reconciliation.
-- Idempotency keys protect writes from duplicate execution.
-- Browser origins are validated.
-
-## Current scope and limitations
-
-This repository demonstrates a **synthetic local Alexa+ simulation**.
-
-It does **not** claim or implement:
-
-- production Alexa+ deployment;
-- live Amazon Bedrock orchestration;
-- production AWS infrastructure;
-- real purchasing;
-- real supplier messaging;
-- Toast production integration;
-- SMS execution;
-- production authentication;
-- production database persistence; or
-- autonomous spending.
-
-AWS/Bedrock integration is documented as architecture-only in the current verified MVP. See [`docs/AWS_BEDROCK_PLAN.md`](docs/AWS_BEDROCK_PLAN.md).
-
-## Documentation
-
-- [`docs/PRODUCT_CHARTER.md`](docs/PRODUCT_CHARTER.md) — product scope and positioning
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — implementation architecture
-- [`docs/MCP_TOOLS.md`](docs/MCP_TOOLS.md) — locked eight-tool inventory
-- [`docs/VERIFIED_ACTION_RECEIPT.md`](docs/VERIFIED_ACTION_RECEIPT.md) — verification/receipt model
-- [`docs/AWS_BEDROCK_PLAN.md`](docs/AWS_BEDROCK_PLAN.md) — future AWS/Bedrock adapter plan, not executed
-- [`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md) — local synthetic demo procedure
-
-## License
-
-MIT — see [`LICENSE`](LICENSE).
+MIT — see [LICENSE](LICENSE). `private: true` in package.json prevents accidental npm publication, not access to this public GitHub source.

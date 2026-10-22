@@ -1,3 +1,6 @@
+# Dated scope note — October 22, 2026
+Entries1–4 below document the earlier baseline. The13-test count is historical; current source verification is32 tests. They are developer observations/suggestions, not proof of native Alexa+ execution or an assertion that the platform lacks those features. See AWS_INTEGRATION_EVIDENCE.md for the later bounded Bedrock experiment.
+
 # AIZOYA Operator for Alexa+ — Friction Log
 
 ## 1. Local Alexa+ / MCP browser origin mismatch
@@ -90,3 +93,6 @@ Reliable real-world agent workflows require a clear separation between:
 **conversation → intent → authority → execution → evidence → verified outcome**
 
 Alexa+ and MCP provide a strong foundation for intelligence and orchestration. Additional examples and primitives around durable state, consequential-action approval, and evidence-backed completion would make trustworthy operational agents substantially easier to build.
+
+## 5. Nova Lite token pre-count unsupported in this experiment
+Task: pre-count a bounded Converse request before a live probe. Expected: CountTokens returns a supported token count. Actual: ValidationException for this selected model. Severity: Important. Workaround: retained fixed model/region, request-byte and output/call bounds, checked pricing separately and kept invoice status unknown; did not claim successful pre-count. Suggestion: make per-model CountTokens support and bounded-cost alternatives easier to identify before dispatch.

@@ -12,3 +12,6 @@ Judge-ready surface: **8 tools exactly**.
 8. `get_action_receipt` — retrieve the immutable/tamper-evident VAR record.
 
 No vendor-specific tools are exposed. Toast, supplier, Bedrock, DynamoDB, SMS, or other adapters must remain underneath these business-capability contracts.
+
+## Current release boundary
+Bedrock sees only the two read-only tools, not the entire eight-tool inventory. Approval binds exact plan ID and monotonic revision. These controls run under trusted local demo identity, not production authentication. Receipt storage is local and mutable by the operating-system user; hashes are integrity checks, not immutable storage or digital signatures.

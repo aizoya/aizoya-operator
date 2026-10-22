@@ -30,7 +30,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'approve_action', title: 'Approve Action',
     description: 'Record explicit human approval for the exact current purchase-plan version. Never executes a purchase.',
-    inputSchema: object({ workflow_id: { type: 'string' }, plan_version: { type: 'integer', minimum: 1 }, approval_phrase: { type: 'string', minLength: 1 }, idempotency_key: { type: 'string', minLength: 1 } }, ['workflow_id','plan_version','approval_phrase','idempotency_key']),
+    inputSchema: object({ workflow_id: { type: 'string' }, plan_id: { type: 'string', minLength: 1 }, plan_version: { type: 'integer', minimum: 1 }, approval_phrase: { type: 'string', minLength: 1 }, idempotency_key: { type: 'string', minLength: 1 } }, ['workflow_id','plan_id','plan_version','approval_phrase','idempotency_key']),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
   },
   {
@@ -52,3 +52,4 @@ export const TOOL_DEFINITIONS = [
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
   }
 ];
+
