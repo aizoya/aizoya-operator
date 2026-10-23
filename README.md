@@ -37,7 +37,7 @@ To run the optional SDK path in your own authorized AWS development environment,
 ## Implementation and verification
 Node.js ES modules, built-in HTTP, MCP 2025-11-25 Streamable HTTP, exactly eight business-capability tools, single-process JSON persistence, SHA-256 integrity hashes and built-in node:test. Core guided mode has no runtime package dependencies. The Bedrock SDK is optional.
 
-Fresh local verification: **preflight PASS; 38/38 tests PASS**, including ten consecutive isolated synthetic hero workflows. Coverage includes approval refusal/staleness, changed execution chains, missing evidence, idempotency, tenant partitions, session/origin checks, bounded reader calls and mocked-DOM UI behavior. These are not 38 live AWS scenarios or a production security certification.
+Fresh local verification: **preflight PASS; 40/40 tests PASS**, including ten consecutive isolated synthetic hero workflows. Coverage includes approval refusal/staleness, changed execution chains, missing evidence, idempotency, tenant partitions, session/origin checks, bounded reader calls and mocked-DOM UI behavior. These are not 40 live AWS scenarios or a production security certification.
 
 - [Architecture and tool boundaries](docs/ARCHITECTURE.md)
 - [Eight MCP tools](docs/MCP_TOOLS.md)
@@ -46,7 +46,7 @@ Fresh local verification: **preflight PASS; 38/38 tests PASS**, including ten co
 - [Source manifest](SOURCE_MANIFEST.sha256)
 
 ## Important limits
-Demo headers are trusted local identity, not production authentication. JSON storage is not multi-process transaction-safe. Receipt hashes detect covered changes; they are not cryptographic signatures or proof of a real purchase. Fixtures use historical dates. The current baseline video at https://vimeo.com/1226788601 predates the optional reader and later hardening; it is not evidence of those newer features. Current release browser/iPhone visual QA and revised recording remain outstanding.
+Demo headers are trusted local identity, not production authentication. JSON storage is not multi-process transaction-safe. Receipt hashes detect covered changes; they are not cryptographic signatures or proof of a real purchase. Fixture evidence retains historical dates separately from each run's synthetic closeout time. See [receipt timing](docs/VERIFIED_ACTION_RECEIPT.md). The current baseline video at https://vimeo.com/1226788601 predates the optional reader and later hardening; it is not evidence of those newer features. Current release browser/iPhone visual QA and revised recording remain outstanding.
 
 No DynamoDB, Cognito, AgentCore, Strands, OpenSearch, production database, supplier, Toast or SMS integration is claimed. No hosting/deployment is included.
 
