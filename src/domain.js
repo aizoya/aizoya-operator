@@ -30,9 +30,15 @@ function workflow(t, workflowId) {
   return w;
 }
 
+function orderedTimes(values) {
+  const times = values.map(value => typeof value === 'string' ? Date.parse(value) : NaN);
+  return times.every((value, index) => Number.isFinite(value) && (index === 0 || value >= times[index - 1]));
+}
+
 function isIntactReceipt(receipt, tenantId, receiptId) {
   if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) return false;
   if (receipt.receipt_id !== receiptId || receipt.tenant_id !== tenantId || receipt.synthetic !== true || receipt.status !== 'VERIFIED') return false;
+  if (!orderedTimes([receipt.requested_at, receipt.authorized_at, receipt.completed_at, receipt.created_at])) return false;
   const body = Object.fromEntries(Object.entries(receipt).filter(([key]) => key !== 'receipt_hash'));
   return receipt.receipt_hash === sha256(JSON.stringify(body));
 }
@@ -149,7 +155,10 @@ export function createOperations({ store, fixturePath }) {
         }
         const inputState={ workflow_id:w.workflow_id, plan_id:w.purchase_plan.plan_id, plan_version:w.purchase_plan.version, approval_id:w.approval.approval_id, handoff_id:w.handoff.handoff_id };
         const resultState={ evidence_ref:evidence.evidence_ref, evidence_hash:sha256(JSON.stringify(evidence)), exceptions };
-        const receipt={ receipt_id:id('var'), tenant_id:ctx.tenantId, workflow_id:w.workflow_id, action_type:'synthetic_purchase_readiness_closeout', requested_by:w.requested_by, authorized_by:w.approval.authorized_by, owner:w.handoff.assignee, status:'VERIFIED', requested_at:w.created_at, authorized_at:w.approval.authorized_at, completed_at:evidence.completed_at, evidence_refs:[evidence.evidence_ref], input_state_hash:sha256(JSON.stringify(inputState)), result_state_hash:sha256(JSON.stringify(resultState)), exceptions, verification_method:'deterministic_line_item_quantity_match', verifier:'aizoya-operator-deterministic-verifier-v1', created_at:iso(), schema_version:'var-v1', synthetic:true };
+        // Historical fixture time describes evidence, not completion of this run.
+        const completedAt=iso();
+        if (!orderedTimes([w.created_at,w.approval.authorized_at,w.handoff.created_at,completedAt])) throw fail('CLOSEOUT_CHRONOLOGY_INVALID');
+        const receipt={ receipt_id:id('var'), tenant_id:ctx.tenantId, workflow_id:w.workflow_id, action_type:'synthetic_purchase_readiness_closeout', requested_by:w.requested_by, authorized_by:w.approval.authorized_by, owner:w.handoff.assignee, status:'VERIFIED', requested_at:w.created_at, authorized_at:w.approval.authorized_at, completed_at:completedAt, evidence_completed_at:evidence.completed_at, completion_basis:'synthetic_reconciliation', evidence_refs:[evidence.evidence_ref], input_state_hash:sha256(JSON.stringify(inputState)), result_state_hash:sha256(JSON.stringify(resultState)), exceptions, verification_method:'deterministic_line_item_quantity_match', verifier:'aizoya-operator-deterministic-verifier-v1', created_at:completedAt, schema_version:'var-v1', synthetic:true };
         receipt.receipt_hash=sha256(JSON.stringify(receipt));
         t.receipts[receipt.receipt_id]=receipt; w.verified_action_receipt_id=receipt.receipt_id; w.status='CLOSED'; w.updated_at=iso(); w.version++;
         audit(t,ctx.actorId,'closeout.verified',{workflow_id:w.workflow_id,receipt_id:receipt.receipt_id});
